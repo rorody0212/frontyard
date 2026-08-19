@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>frontyard</title>
+    <style>
+        body { margin: 0; min-height: 100vh; background-color: #ffffff; font-family: sans-serif; }
+        #desktop { width: 100vw; height: 5000px; position: relative; }
+        .desktop-icon { position: absolute; cursor: pointer; user-select: none; }
+        .desktop-icon img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.2)); transition: transform 0.2s; }
+        .desktop-icon img:hover { transform: scale(1.08); }
+        
+        /* 관리자 모드일 때 아이콘 강조 테두리 및 이동 커서 */
+        .admin-mode .desktop-icon { border: 2px dashed #ff4757; cursor: move; }
+        
+        /* 화면 왼쪽 상단 관리자 로그인 버튼 */
+        #admin-login { position: fixed; top: 10px; left: 10px; z-index: 3000; cursor: pointer; font-size: 15px; background: rgba(255,255,255,0.8); padding: 5px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; }
+        
+        #modal-overlay { display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; z-index: 1000; justify-content: center; align-items: center; }
+        #modal-content-container { position: relative; max-width: 90vw; max-height: 90vh; }
+        
+        .content-box { 
+            width: 70vw; height: 70vh; background-size: contain; background-repeat: no-repeat; background-position: center;
+            position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        
+        /* 스크롤 영역: 텍스트 박스를 감싸며 스크롤 바를 우측으로 밈 */
+        .scroll-container {
+            width: 30%;  /* 필요시 텍스트 가로 폭 수정 (예: 30%~50%) */
+            max-height: 80%;
+            overflow-y: auto;
+            padding-right: 200px;
+            box-sizing: content-box;
+            margin-right: -200px;
+        }
+
+        .text-box { 
+            color: #000000; font-size: 19px; line-height: 1.6; 
+            text-align: center; white-space: pre-wrap; 
+            width: 100%;
+        }
+
+        .modal-image { max-width: 70vw; max-height: 70vh; display: block; }
+        
+        .comment-bar { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 1002; }
+        .comment-bar input { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        .comment-bubble { position: absolute; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px); padding: 10px 15px; border-radius: 20px; font-size: 14px; pointer-events: none; z-index: 1001; animation: float 5s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    </style>
+</head>
+<body>
+    <!-- 왼쪽 상단 관리자 로그인 버튼 -->
+    <div id="admin-login" onclick="toggleAdmin()" title="관리자 로그인">⚙️</div>
+    
+    <div id="desktop"></div>
+    <div id="bubble-container"></div>
+    
+    <div id="modal-overlay" onclick="closeModal()">
+        <div id="modal-content-container" onclick="event.stopPropagation()">
+            <div id="modal-body"></div>
+        </div>
+        <div class="comment-bar" onclick="event.stopPropagation()">
+            <input type="text" id="comment-author" placeholder="이름" style="width:60px">
+            <input type="text" id="comment-text" placeholder="댓글..." style="width:150px">
+            <button onclick="addComment()">등록</button>
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzsBHnldUvn9TU2YKWJi5Nz8mhyctJi2U99-f9NbHc7tp8UNLgSK06BT0nTPhOGuDOFKg/exec";
+        let currentItem = null;
+        let isAdmin = false;
+
+        // 관리자 모드 토글 (비밀번호: 8181)
+        function toggleAdmin() {
+            const pass = prompt("관리자 비밀번호를 입력하세요:");
+            if (pass === "8181") {
+                isAdmin = !isAdmin;
+                document.body.classList.toggle('admin-mode', isAdmin);
+                alert(isAdmin ? "관리자 모드가 활성화되었습니다. 아이콘을 드래그하여 위치를 옮겨보세요!" : "관리자 모드가 종료되었습니다.");
+            } else if (pass !== null) {
+                alert("비밀번호가 틀렸습니다.");
+            }
+        }
+
+        function getRandomColor() {
+            const colors = ['#bada55', '#e4ebe8', '#b03030', '#fcf635', '#3882f9', '#020202', '#ffffff', '#273586'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        async function loadDesktopItems() {
+            let res = await fetch(WEB_APP_URL);
+            let items = await res.json();
+            const desktop = document.getElementById('desktop');
+            desktop.innerHTML = '';
+            items.forEach(item => {
+                let div = document.createElement('div');
+                div.className = 'desktop-icon';
+                div.dataset.id = item.id; // 드래그 시 아이콘 식별을 위해 ID 부여
+                const size = item.size || 80;
+                div.style.width = size + 'px'; 
+                div.style.height = size + 'px';
+                div.style.left = item.x + 'px'; 
+                div.style.top = item.y + 'px';
+                div.innerHTML = `<img src="${item.iconUrl}">`;
+                
+                // 일반 모드일 때만 모달 열기, 관리자 모드일 때는 드래그 우선
+                div.onclick = (e) => {
+                    if (!isAdmin) openModal(item);
+                };
+                
+                desktop.appendChild(div);
+            });
+        }
+
+        // 드래그 앤 드롭으로 좌표 수정 기능
+        let activeIcon = null;
+        let startX = 0, startY = 0;
+
+        document.addEventListener('mousedown', (e) => {
+            if (!isAdmin) return;
+            const icon = e.target.closest('.desktop-icon');
+            if (icon) {
+                activeIcon = icon;
+                startX = e.clientX - activeIcon.offsetLeft;
+                startY = e.clientY - activeIcon.offsetTop;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!activeIcon || !isAdmin) return;
+            let newX = e.clientX - startX;
+            let newY = e.clientY - startY;
+            activeIcon.style.left = newX + 'px';
+            activeIcon.style.top = newY + 'px';
+        });
+
+        document.addEventListener('mouseup', async () => {
+            if (!activeIcon || !isAdmin) return;
+            const id = activeIcon.dataset.id;
+            const x = parseInt(activeIcon.style.left);
+            const y = parseInt(activeIcon.style.top);
+
+            // 구글 시트에 즉시 좌표 저장 요청
+            try {
+                await fetch(`${WEB_APP_URL}?id=${id}&x=${x}&y=${y}`);
+            } catch (err) {
+                console.error("좌표 저장 실패", err);
+            }
+
+            activeIcon = null;
+        });
+
+        async function openModal(item) {
+            let res = await fetch(WEB_APP_URL);
+            let items = await res.json();
+            currentItem = items.find(i => i.id == item.id);
+
+            const body = document.getElementById('modal-body');
+            const overlay = document.getElementById('modal-overlay');
+            const bubbleCont = document.getElementById('bubble-container');
+            
+            overlay.style.backgroundColor = getRandomColor();
+            bubbleCont.innerHTML = ''; 
+
+            if (currentItem.content.startsWith('http')) {
+                body.innerHTML = `<img src="${currentItem.content}" class="modal-image">`;
+            } else {
+                body.innerHTML = `<div class="content-box" style="background-image: url('${currentItem.backgroundUrl}')">
+                                    <div class="scroll-container">
+                                        <div class="text-box">${currentItem.content}</div>
+                                    </div>
+                                  </div>`;
+            }
+            
+            let comments = currentItem.comments ? JSON.parse(currentItem.comments) : [];
+            comments.forEach(c => createBubble(c.text, c.author));
+            
+            overlay.style.display = 'flex';
+        }
+
+        function createBubble(text, author) {
+            const div = document.createElement('div');
+            div.className = 'comment-bubble';
+            div.textContent = author ? `${text} - ${author}` : text;
+            div.style.left = (Math.random() * 80 + 10) + '%';
+            div.style.top = (Math.random() * 80 + 10) + '%';
+            document.getElementById('bubble-container').appendChild(div);
+        }
+
+        async function addComment() {
+            const author = document.getElementById('comment-author').value || '익명';
+            const text = document.getElementById('comment-text').value;
+            if(!text) return;
+            
+            let comments = currentItem.comments ? JSON.parse(currentItem.comments) : [];
+            comments.push({author, text});
+            
+            const sendUrl = `${WEB_APP_URL}?id=${currentItem.id}&comments=${encodeURIComponent(JSON.stringify(comments))}`;
+            new Image().src = sendUrl;
+            
+            createBubble(text, author);
+            document.getElementById('comment-text').value = '';
+            
+            currentItem.comments = JSON.stringify(comments);
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.getElementById('bubble-container').innerHTML = '';
+        }
+
+        loadDesktopItems();
+    </script>
+</body>
+</html>
