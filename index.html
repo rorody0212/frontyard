@@ -10,21 +10,28 @@
         .desktop-icon img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.2)); transition: transform 0.2s; }
         .desktop-icon img:hover { transform: scale(1.08); }
         
+        /* 심플한 관리자 정원 버튼 (드롭섀도우 없음) */
         .admin-mode .desktop-icon { border: 2px dashed #ff4757; cursor: move; }
-        #admin-login { position: fixed; top: 10px; left: 10px; z-index: 3000; cursor: pointer; font-size: 20px; background: rgba(255,255,255,0.8); padding: 5px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; }
+        #admin-login { 
+            position: fixed; top: 10px; left: 10px; z-index: 3000; cursor: pointer; 
+            width: 30px; height: 30px; background-color: #dc4b4b; border-radius: 50%;
+        }
         
-        /* 모달 독립 스크롤 영역 */
+        /* 모달: 독립 스크롤 및 중앙 정렬 */
         #modal-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-            z-index: 1000; overflow-y: auto; box-sizing: border-box; padding: 60px 20px;
+            z-index: 1000; overflow-y: auto; box-sizing: border-box; 
+        }
+
+        #modal-content-container {
+            min-height: 100vh; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; padding: 100px 20px;
         }
 
         .content-wrapper {
-            width: 70vw; max-width: 800px; margin: 0 auto;
-            display: flex; flex-direction: column; align-items: center; position: relative;
+            width: 70vw; max-width: 800px; display: flex; flex-direction: column; align-items: center; z-index: 3;
         }
 
-        /* 이미지 잘림 방지 */
         .modal-header-image {
             width: 100%; height: auto; max-height: 60vh;
             object-fit: contain; display: block; margin-bottom: 20px;
@@ -34,22 +41,21 @@
             font-size: 19px; line-height: 1.8; text-align: left; white-space: pre-wrap; width: 100%; padding-bottom: 100px;
         }
 
-        .modal-image { max-width: 90%; max-height: 80vh; display: block; margin: auto; }
+        .modal-image { max-width: 90%; max-height: 80vh; display: block; margin: auto; z-index: 3; }
 
-        /* 우측 상단 고정형 나가기 버튼 */
+        /* 무작위 위치 나가기 정원 버튼 (그림자 제거, 지름 2배인 140px) */
         .close-circle-btn {
-            position: fixed; top: 30px; right: 30px; border-radius: 50%; cursor: pointer;
-            width: 70px; height: 70px; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            transition: transform 0.2s;
+            position: absolute; border-radius: 50%; cursor: pointer;
+            width: 140px; height: 140px; z-index: 1; transition: transform 0.2s;
         }
-        .close-circle-btn:hover { transform: scale(1.1); }
+        .close-circle-btn:hover { transform: scale(1.05); }
 
         .comment-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 1002; background: rgba(255,255,255,0.9); padding: 8px 15px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .comment-bar input { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
         
         #bubble-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; overflow: hidden; z-index: 1001;
+            pointer-events: none; overflow: hidden; z-index: 2;
         }
         .comment-bubble { 
             position: absolute; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(5px); 
@@ -60,7 +66,7 @@
     </style>
 </head>
 <body>
-    <div id="admin-login" onclick="toggleAdmin()" title="관리자 로그인">⚙️</div>
+    <div id="admin-login" onclick="toggleAdmin()" title="관리자"></div>
     
     <div id="desktop"></div>
     
@@ -78,7 +84,7 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwwOavc-bPup6lQSRirYW5DyvsceJpA47RAj4uAW203JleATUlxUR6Uob7hC_a3LOEGYQ/exec"; // 본인 URL 유지
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwwOavc-bPup6lQSRirYW5DyvsceJpA47RAj4uAW203JleATUlxUR6Uob7hC_a3LOEGYQ/exec";
         let currentItem = null;
         let isAdmin = false;
         
@@ -174,6 +180,8 @@
             const closeBtn = document.createElement('div');
             closeBtn.className = 'close-circle-btn';
             closeBtn.style.backgroundColor = closeBtnColor;
+            closeBtn.style.left = (Math.random() * 70) + '%';
+            closeBtn.style.top = (Math.random() * 70) + '%';
             closeBtn.onclick = closeModal;
             closeBtnCont.appendChild(closeBtn);
 
