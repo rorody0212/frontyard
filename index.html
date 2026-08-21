@@ -2,61 +2,91 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>frontyard</title>
+    <title>나만의 스케치북</title>
     <style>
-        body { margin: 0; min-height: 100vh; background-color: #ffffff; font-family: sans-serif; }
+        body { margin: 0; min-height: 100vh; background-color: #ffffff; font-family: sans-serif; overflow-x: hidden; }
         #desktop { width: 100vw; height: 5000px; position: relative; }
         .desktop-icon { position: absolute; cursor: pointer; user-select: none; }
         .desktop-icon img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.2)); transition: transform 0.2s; }
         .desktop-icon img:hover { transform: scale(1.08); }
         
-        /* 관리자 모드일 때 아이콘 강조 테두리 및 이동 커서 */
+        /* 관리자 모드 아이콘 */
         .admin-mode .desktop-icon { border: 2px dashed #ff4757; cursor: move; }
+        #admin-login { position: fixed; top: 10px; left: 10px; z-index: 3000; cursor: pointer; font-size: 20px; background: rgba(255,255,255,0.8); padding: 5px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; }
         
-        /* 화면 왼쪽 상단 관리자 로그인 버튼 */
-        #admin-login { position: fixed; top: 10px; left: 10px; z-index: 3000; cursor: pointer; font-size: 15px; background: rgba(255,255,255,0.8); padding: 5px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; }
-        
-        #modal-overlay { display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; z-index: 1000; justify-content: center; align-items: center; }
-        #modal-content-container { position: relative; max-width: 90vw; max-height: 90vh; }
-        
-        .content-box { 
-            width: 70vw; height: 70vh; background-size: contain; background-repeat: no-repeat; background-position: center;
-            position: relative; display: flex; align-items: center; justify-content: center;
+        /* 모달창: 메인 스크롤과 완전히 분리된 독립된 전체 화면 오버레이 */
+        #modal-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            z-index: 1000; justify-content: center; align-items: center; 
+            overflow-y: auto; /* 모달창 자체에 독립적인 스크롤 부여 */
+            box-sizing: border-box;
+            padding: 40px 0;
+        }
+
+        #modal-content-container { 
+            position: relative; width: 100%; display: flex; justify-content: center; align-items: center;
         }
         
-        /* 스크롤 영역: 텍스트 박스를 감싸며 스크롤 바를 우측으로 밈 */
+        /* 본문 컨테이너: 헤더 이미지처럼 스크롤을 내리면 같이 올라가는 구조 */
+        .content-wrapper {
+            width: 70vw; max-width: 800px;
+            background: #ffffff;
+            display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: auto;
+        }
+
+        /* 상단 헤더 이미지 (배경 이미지 역할 대체) */
+        .modal-header-image {
+            width: 100%;
+            height: auto;
+            max-height: 50vh;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* 텍스트 영역: 헤더 이미지 아래에 자연스럽게 이어져서 스크롤됨 */
         .scroll-container {
-            width: 30%;  /* 필요시 텍스트 가로 폭 수정 (예: 30%~50%) */
-            max-height: 80%;
-            overflow-y: auto;
-            padding-right: 200px;
-            box-sizing: content-box;
-            margin-right: -200px;
+            width: 80%;
+            padding: 40px 0;
+            box-sizing: border-box;
         }
 
         .text-box { 
-            color: #000000; font-size: 19px; line-height: 1.6; 
-            text-align: center; white-space: pre-wrap; 
+            color: #333333; font-size: 18px; line-height: 1.8; 
+            text-align: left; white-space: pre-wrap; 
             width: 100%;
         }
 
-        .modal-image { max-width: 70vw; max-height: 70vh; display: block; }
+        .modal-image { max-width: 90%; max-height: 80vh; display: block; border-radius: 8px; }
         
-        .comment-bar { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 1002; }
-        .comment-bar input { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; }
+        /* 댓글 입력 바 (화면 하단 고정) */
+        .comment-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 1002; background: rgba(255,255,255,0.9); padding: 8px 15px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .comment-bar input { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
         
-        .comment-bubble { position: absolute; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px); padding: 10px 15px; border-radius: 20px; font-size: 14px; pointer-events: none; z-index: 1001; animation: float 5s infinite ease-in-out; }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        /* 댓글 버블: 모달창 화면 내에서 부유하도록 수정 */
+        #bubble-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; overflow: hidden; z-index: 1001;
+        }
+        .comment-bubble { 
+            position: absolute; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(5px); 
+            padding: 8px 14px; border-radius: 20px; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            animation: float 5s infinite ease-in-out; 
+        }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     </style>
 </head>
 <body>
-    <!-- 왼쪽 상단 관리자 로그인 버튼 -->
     <div id="admin-login" onclick="toggleAdmin()" title="관리자 로그인">⚙️</div>
     
     <div id="desktop"></div>
-    <div id="bubble-container"></div>
     
+    <!-- 모달 오버레이 (클릭 시 닫힘) -->
     <div id="modal-overlay" onclick="closeModal()">
+        <div id="bubble-container"></div>
         <div id="modal-content-container" onclick="event.stopPropagation()">
             <div id="modal-body"></div>
         </div>
@@ -68,24 +98,23 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzsBHnldUvn9TU2YKWJi5Nz8mhyctJi2U99-f9NbHc7tp8UNLgSK06BT0nTPhOGuDOFKg/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyFpG-9e_P1k1fF-1G5oN610-z2Q6h8l9Vv2T7x5k4M3s2W1p0/exec"; // 본인 웹 앱 URL 유지
         let currentItem = null;
         let isAdmin = false;
 
-        // 관리자 모드 토글 (비밀번호: 8181)
         function toggleAdmin() {
             const pass = prompt("관리자 비밀번호를 입력하세요:");
-            if (pass === "8181") {
+            if (pass === "1234") {
                 isAdmin = !isAdmin;
                 document.body.classList.toggle('admin-mode', isAdmin);
-                alert(isAdmin ? "관리자 모드가 활성화되었습니다. 아이콘을 드래그하여 위치를 옮겨보세요!" : "관리자 모드가 종료되었습니다.");
+                alert(isAdmin ? "관리자 모드 활성화" : "관리자 모드 종료");
             } else if (pass !== null) {
                 alert("비밀번호가 틀렸습니다.");
             }
         }
 
         function getRandomColor() {
-            const colors = ['#bada55', '#e4ebe8', '#b03030', '#fcf635', '#3882f9', '#020202', '#ffffff', '#273586'];
+            const colors = ['#f8f9fa', '#f1f3f5', '#e9ecef', '#dee2e6'];
             return colors[Math.floor(Math.random() * colors.length)];
         }
 
@@ -97,7 +126,7 @@
             items.forEach(item => {
                 let div = document.createElement('div');
                 div.className = 'desktop-icon';
-                div.dataset.id = item.id; // 드래그 시 아이콘 식별을 위해 ID 부여
+                div.dataset.id = item.id;
                 const size = item.size || 80;
                 div.style.width = size + 'px'; 
                 div.style.height = size + 'px';
@@ -105,16 +134,13 @@
                 div.style.top = item.y + 'px';
                 div.innerHTML = `<img src="${item.iconUrl}">`;
                 
-                // 일반 모드일 때만 모달 열기, 관리자 모드일 때는 드래그 우선
                 div.onclick = (e) => {
                     if (!isAdmin) openModal(item);
                 };
-                
                 desktop.appendChild(div);
             });
         }
 
-        // 드래그 앤 드롭으로 좌표 수정 기능
         let activeIcon = null;
         let startX = 0, startY = 0;
 
@@ -131,10 +157,8 @@
 
         document.addEventListener('mousemove', (e) => {
             if (!activeIcon || !isAdmin) return;
-            let newX = e.clientX - startX;
-            let newY = e.clientY - startY;
-            activeIcon.style.left = newX + 'px';
-            activeIcon.style.top = newY + 'px';
+            activeIcon.style.left = (e.clientX - startX) + 'px';
+            activeIcon.style.top = (e.clientY - startY) + 'px';
         });
 
         document.addEventListener('mouseup', async () => {
@@ -143,13 +167,11 @@
             const x = parseInt(activeIcon.style.left);
             const y = parseInt(activeIcon.style.top);
 
-            // 구글 시트에 즉시 좌표 저장 요청
             try {
                 await fetch(`${WEB_APP_URL}?id=${id}&x=${x}&y=${y}`);
             } catch (err) {
                 console.error("좌표 저장 실패", err);
             }
-
             activeIcon = null;
         });
 
@@ -162,17 +184,20 @@
             const overlay = document.getElementById('modal-overlay');
             const bubbleCont = document.getElementById('bubble-container');
             
-            overlay.style.backgroundColor = getRandomColor();
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.75)'; // 어두운 반투명 배경으로 집중도 향상
             bubbleCont.innerHTML = ''; 
 
             if (currentItem.content.startsWith('http')) {
                 body.innerHTML = `<img src="${currentItem.content}" class="modal-image">`;
             } else {
-                body.innerHTML = `<div class="content-box" style="background-image: url('${currentItem.backgroundUrl}')">
-                                    <div class="scroll-container">
-                                        <div class="text-box">${currentItem.content}</div>
-                                    </div>
-                                  </div>`;
+                // 배경 이미지가 맨 위에 헤더처럼 오고, 스크롤을 내리면 글이 자연스럽게 올라오는 구조
+                body.innerHTML = `
+                    <div class="content-wrapper">
+                        ${currentItem.backgroundUrl ? `<img src="${currentItem.backgroundUrl}" class="modal-header-image">` : ''}
+                        <div class="scroll-container">
+                            <div class="text-box">${currentItem.content}</div>
+                        </div>
+                    </div>`;
             }
             
             let comments = currentItem.comments ? JSON.parse(currentItem.comments) : [];
@@ -185,8 +210,8 @@
             const div = document.createElement('div');
             div.className = 'comment-bubble';
             div.textContent = author ? `${text} - ${author}` : text;
-            div.style.left = (Math.random() * 80 + 10) + '%';
-            div.style.top = (Math.random() * 80 + 10) + '%';
+            div.style.left = (Math.random() * 70 + 15) + '%';
+            div.style.top = (Math.random() * 70 + 15) + '%';
             document.getElementById('bubble-container').appendChild(div);
         }
 
@@ -203,7 +228,6 @@
             
             createBubble(text, author);
             document.getElementById('comment-text').value = '';
-            
             currentItem.comments = JSON.stringify(comments);
         }
 
